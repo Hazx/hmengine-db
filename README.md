@@ -1,6 +1,6 @@
 # HMengine-DB
 
-HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库引擎，数据库读写性能相较传统 MySQL （默认参数）有着翻倍提升。如需高可用集群化部署可以使用 [HMengine-DBC](/Hazx/hmengine-dbc)。
+HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库引擎，数据库读写性能相较传统 MySQL （默认参数）有着翻倍提升。~~如需高可用集群化部署可以使用 [HMengine-DBC](https://github.com/Hazx/hmengine-dbc)。~~
 
 对应镜像及版本：
 

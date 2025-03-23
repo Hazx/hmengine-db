@@ -1,0 +1,67 @@
+#!/bin/bash
+
+## 组件版本
+export set_ver_mysql=8.0.41
+
+## 安装MySQL依赖组件
+echo "安装MySQL依赖组件..."
+apt update -y
+apt install -y openssl libssl-dev libncurses5-dev libtinfo-dev build-essential libreadline-dev zlib1g-dev \
+    libicu-dev libaio1 libaio-dev libnuma-dev libboost-dev libboost-system-dev libboost-filesystem-dev \
+    libudev-dev
+sleep 6
+
+. /root/hazx/buildvar.sh
+
+## 处理MySQL源码
+cd /root/hazx/src
+tar zxvf mysql-${set_ver_mysql}.tar.gz
+sleep 6
+
+## 配置MySQL
+echo "配置MySQL..."
+cd /root/hazx/src/mysql-${set_ver_mysql}/
+mkdir build
+cd build
+cmake .. \
+    -DCMAKE_INSTALL_PREFIX=/db_server \
+    -DMYSQL_DATADIR=/db_server/data \
+    -DWITH_BOOST=../boost \
+    -DDOWNLOAD_BOOST=1 \
+    -DSYSCONFDIR=/db_server/etc \
+    -DDEFAULT_CHARSET=utf8mb4 \
+    -DDEFAULT_COLLATION=utf8mb4_general_ci \
+    -DENABLED_LOCAL_INFILE=ON \
+    -DWITH_SSL=system \
+    -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+    -DWITH_ZLIB=bundled \
+    -DWITH_LIBWRAP=0
+sleep 6
+
+## 编译MySQL
+echo "开始编译MySQL..."
+make -j${set_make_threads:-2}
+sleep 6
+make install
+sleep 6
+
+## 处理配置文件目录
+rm -fr /db_server/etc
+mkdir -p /db_server/etc
+
+## 清理无用内容
+rm -f /db_server/LICENS*
+rm -f /db_server/READM*
+rm -fr /db_server/docs
+rm -fr /db_server/include
+rm -fr /db_server/man
+rm -fr /db_server/mysql-test
+rm -fr /db_server/run
+rm -fr /db_server/var
+rm -f /db_server/mysqlrouter-log-rotate
+rm -fr /db_server/support-files
+
+
+
+sleep 6
+

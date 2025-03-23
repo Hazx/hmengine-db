@@ -1,0 +1,261 @@
+#!/bin/bash
+
+## 函数：后台启动 HMengine Database
+db_start_bg(){
+    if [ -e "/db_server/mysqld.pid" ];then
+        rm -f /db_server/mysqld.pid
+    fi
+    chown -R mysql:mysql /db_server/data
+    chmod -R 755 /db_server/data
+    echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Service Starting in background..."
+    echo "" > /db_server/db.log
+    chown mysql:mysql /db_server/db.log
+    /db_server/bin/mysqld \
+        --defaults-file=/db_server/etc/main.cnf \
+        --basedir=/db_server \
+        --user=mysql \
+        --mysqlx=OFF \
+        --port=${DB_PORT:-6000} \
+        --upgrade=AUTO \
+        --log-error=/db_server/db.log \
+        >/db_server/db.log 2>&1 &
+    ## 等待启动
+    ATTEMPT=0
+    while [ $ATTEMPT -lt 20 ]; do
+        if [ ! -f "/db_server/mysqld.pid" ]; then
+            sleep 3
+            ATTEMPT=$((ATTEMPT + 1))
+        else
+            ATTEMPT=20
+        fi
+    done
+    if [ ! -e "/db_server/mysqld.pid" ] ; then
+        cat /db_server/db.log
+        echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Service Start Failed."
+        sleep 10
+        exit 1
+    else
+        echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Service Started."
+    fi
+}
+
+## 函数：等待数据库就绪
+db_wait_ready(){
+    ATTEMPT=0
+    while [ $ATTEMPT -lt 100 ]; do
+        /db_server/bin/mysql -N -u root \
+            --socket=/db_server/socket/mysql.sock \
+            -e "SELECT VERSION();" \
+            > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            sleep 3
+            ATTEMPT=$((ATTEMPT + 1))
+        else
+            ATTEMPT=200
+        fi
+    done
+    if [ $ATTEMPT -ne 200 ];then
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] Waitting Database ready but timeout..."
+        sleep 10
+        exit 1
+    fi
+}
+
+## 函数：结束数据库进程
+db_stop(){
+    kill -15 $(cat /db_server/mysqld.pid)
+    ATTEMPT=0
+    while [ $ATTEMPT -lt 100 ]; do
+        if [ -e /db_server/mysqld.pid ]; then
+            sleep 3
+            ATTEMPT=$((ATTEMPT + 1))
+        else
+            ATTEMPT=100
+        fi
+    done
+    if [ -e /db_server/mysqld.pid ]; then
+        kill -9 $(cat /db_server/mysqld.pid)
+    fi
+    sleep 3
+}
+
+## 函数：两个数取最小
+least(){
+    if [ "$1" -lt "$2" ]; then
+        echo $1
+    else
+        echo $2
+    fi
+}
+
+
+## 处理配置文件
+cat /db_server/etc/default.cnf > /db_server/etc/main.cnf
+cat /db_server/etc/my.cnf >> /db_server/etc/main.cnf
+chown mysql:mysql /db_server/etc/main.cnf
+
+## 变量：DB_LCTN -> lower_case_table_names
+if [ ! -n "${DB_LCTN}" ];then
+    sed -i "s/##DB_LCTN##/0/" /db_server/etc/main.cnf
+else
+    if [[ "${DB_LCTN}" = "true" ]] || [[ "${DB_LCTN}" = "TRUE" ]] || [[ "${DB_LCTN}" = "1" ]]; then
+        sed -i "s/##DB_LCTN##/1/" /db_server/etc/main.cnf
+    else
+        sed -i "s/##DB_LCTN##/0/" /db_server/etc/main.cnf
+    fi
+fi
+
+## 变量：DB_IIC -> innodb_io_capacity
+if [ ! -n "${DB_IIC}" ];then
+    sed -i "s/##DB_IIC##/1000/" /db_server/etc/main.cnf
+else
+    sed -i "s/##DB_IIC##/${DB_IIC}/" /db_server/etc/main.cnf
+fi
+
+## 变量：DB_IRLC -> innodb_redo_log_capacity
+if [ ! -n "${DB_IRLC}" ];then
+    sed -i "s/##DB_IRLC##/256M/" /db_server/etc/main.cnf
+else
+    sed -i "s/##DB_IRLC##/${DB_IRLC}/" /db_server/etc/main.cnf
+fi
+
+
+
+## 参数调优：计算工作内存
+db_node_mem=1073741824
+if [ ! -n "${DB_MEM}" ];then
+    db_node_mem_m=$(free -m | grep Mem | awk '{print $7}')
+    if ! [[ $db_node_mem_m =~ ^[0-9]+$ ]]; then
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] cannot read system memory size, please set ENV DB_MEM."
+        sleep 10
+        exit 1
+    fi
+    db_node_mem=$(((db_node_mem_m - 1) * 1048576))
+else
+    tmp_mem_num=$(echo "${DB_MEM}" | grep -oE '[0-9]+' | head -n 1)
+    tmp_mem_unit=$(echo "${DB_MEM}" | grep -oE '[a-zA-Z]$' | head -n 1)
+    if ! [[ $tmp_mem_num =~ ^[0-9]+$ ]]; then
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV DB_MEM unrecognizable."
+        sleep 10
+        exit 1
+    fi
+    if [[ "${tmp_mem_unit}" == "G" || "${tmp_mem_unit}" == "g" || "${tmp_mem_unit}" == "GB" || "${tmp_mem_unit}" == "gb" ]]; then
+        db_node_mem=$((tmp_mem_num * 1073741824))
+    elif [[ "${tmp_mem_unit}" == "M" || "${tmp_mem_unit}" == "m" || "${tmp_mem_unit}" == "MB" || "${tmp_mem_unit}" == "mb" ]]; then
+        db_node_mem=$((tmp_mem_num * 1048576))
+    elif [[ "${tmp_mem_unit}" == "K" || "${tmp_mem_unit}" == "k" || "${tmp_mem_unit}" == "KB" || "${tmp_mem_unit}" == "kb" ]]; then
+        db_node_mem=$((tmp_mem_num * 1024))
+    else
+        db_node_mem=${tmp_mem_num}
+    fi
+    if ! [[ $db_node_mem =~ ^[0-9]+$ ]]; then
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV DB_MEM unrecognizable."
+        sleep 10
+        exit 1
+    fi
+fi
+
+## 参数调优：innodb_buffer_pool_instances
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 8) 
+sed -i "s/##DB_IBPI##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：innodb_buffer_pool_size
+tmp_cnf_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} * 3 / 4 + 0.5}")
+sed -i "s/##DB_IBPS##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：innodb_lru_scan_depth
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1048576 / 8 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 8192) 
+sed -i "s/##DB_ILSD##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：innodb_page_cleaners
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 8) 
+sed -i "s/##DB_IPC##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：innodb_purge_threads
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 8) 
+sed -i "s/##DB_IPT##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：join_buffer_size
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1048576 * 128 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 262144) 
+sed -i "s/##DB_JBS##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：read_buffer_size
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1048576 * 128 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 262144) 
+sed -i "s/##DB_RBS##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：table_definition_cache
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 * 512 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 8192) 
+sed -i "s/##DB_TDC##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+## 参数调优：table_open_cache
+tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 * 1024 + 0.5}")
+tmp_cnf_value=$(least $tmp_calc_value 16384) 
+sed -i "s/##DB_TOC##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+
+
+## 初始化数据库
+if [ ! -e /db_server/data/mysql ];then
+
+    ## 初始化数据库底层信息
+    echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Initializing..."
+    if [ -z "${DB_PASSWORD}" ]; then
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV DB_PASSWORD must be set."
+        sleep 10
+        exit 1
+    fi
+    rm -fr /db_server/data/*
+    rm -f /db_server/db-init.log
+    mkdir -p /db_server/data/
+    chown -R mysql:mysql /db_server/data
+    chmod -R 755 /db_server/data
+    /db_server/bin/mysqld \
+        --defaults-file=/db_server/etc/init.cnf \
+        --basedir=/db_server \
+        --user=mysql \
+        --mysqlx=OFF \
+        --initialize-insecure \
+        --log-error=/db_server/db-init.log
+    cat /db_server/db-init.log
+    sleep 3
+
+    ## 初始化管理员账户
+    db_start_bg
+    db_wait_ready
+    cat /db_server/db.log
+    echo "" > /db_server/db.log
+    echo "[$(date +%Y%m%d-%H%M%S)] Root User Initializing..."
+    /db_server/bin/mysql -N -u root \
+        --socket=/db_server/socket/mysql.sock \
+        -e "DELETE FROM mysql.user WHERE user not in ('mysql.sys','mysql.infoschema','mysql.session');"
+    sleep 1
+    /db_server/bin/mysql -N -u root mysql \
+        --socket=/db_server/socket/mysql.sock \
+        -e "create user 'root'@'%' identified by '${DB_PASSWORD}';"
+    sleep 1
+    /db_server/bin/mysql -N -u root mysql \
+        --socket=/db_server/socket/mysql.sock \
+        -e "grant all on *.* to 'root'@'%' with grant option;"
+    sleep 1
+    /db_server/bin/mysql -N -u root mysql \
+        --socket=/db_server/socket/mysql.sock \
+        -e "flush privileges;"
+    sleep 3
+    cat /db_server/db.log
+
+    db_stop    
+fi
+
+db_start_bg
+
+## 容器保活并输出日志
+cat /db_server/db.log
+echo "" > /db_server/db.log
+tail -f /db_server/db.log
+

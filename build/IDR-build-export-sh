@@ -1,0 +1,13 @@
+#!/bin/bash
+
+mkdir -p /export/db_server
+cp -Ravx /db_server/* /export/db_server/
+echo "export finishied."
+
+
+
+
+
+
+
+

@@ -1,0 +1,64 @@
+#!/bin/bash
+
+## 准备APT源
+mv /etc/apt/sources.list /etc/apt/sources.list.bk
+arch=$(uname -p)
+if [[ $arch == "x86_64" ]] || [[ $arch == "amd64" ]];then
+    cat <<EOF > /etc/apt/sources.list
+    deb http://mirrors.bfsu.edu.cn/ubuntu/ jammy main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu/ jammy main restricted universe multiverse
+    deb http://mirrors.bfsu.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
+    deb http://mirrors.bfsu.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
+    deb http://mirrors.bfsu.edu.cn/ubuntu/ jammy-security main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu/ jammy-security main restricted universe multiverse
+    # deb http://mirrors.bfsu.edu.cn/ubuntu/ jammy-proposed main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu/ jammy-proposed main restricted universe multiverse
+EOF
+elif [[ $arch == "aarch64" ]] || [[ $arch == "arm64" ]];then
+    cat <<EOF > /etc/apt/sources.list
+    deb http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy main restricted universe multiverse
+    deb http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-updates main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-updates main restricted universe multiverse
+    deb http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-backports main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-backports main restricted universe multiverse
+    deb http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-security main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-security main restricted universe multiverse
+    # deb http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-proposed main restricted universe multiverse
+    # deb-src http://mirrors.bfsu.edu.cn/ubuntu-ports/ jammy-proposed main restricted universe multiverse
+EOF
+else
+    echo "arch not support."
+    exit 1
+fi
+apt update -y
+# apt upgrade -y
+
+## 安装依赖环境
+echo "安装依赖环境..."
+apt install -y libaio1 libnuma1
+
+## 配置权限
+chmod a+x /db_server/dbserver.sh
+
+## MySQL相关目录及配置文件
+mkdir -p /db_server/data
+mkdir -p /db_server/mysql-files
+mkdir -p /db_server/etc
+mkdir -p /db_server/socket
+mkdir -p /db_server/tmp
+mv /root/default.cnf /db_server/etc/
+mv /root/init.cnf /db_server/etc/
+echo "" > /db_server/etc/my.cnf
+
+## 配置权限
+groupadd -g 666 mysql
+useradd -r -g 666 -u 666 -s /bin/false mysql
+chmod a+x /db_server/dbserver.sh
+chown -R mysql:mysql /db_server
+
+## 清理缓存
+apt clean all
+rm -rf /var/cache/apt/archives/*

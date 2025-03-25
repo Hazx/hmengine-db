@@ -4,8 +4,8 @@ HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库�
 
 对应镜像及版本：
 
-- `hazx/hmengine-db:1.0-r19`
-- `hazx/hmengine-db:1.0-r19-arm`
+- `hazx/hmengine-db:1.1-r1`
+- `hazx/hmengine-db:1.1-r1-arm`
 
 # 组件版本
 
@@ -13,12 +13,12 @@ HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库�
 
 # 使用镜像
 
-你可以直接下载使用我编译好的镜像 `docker pull hazx/hmengine-db:1.0-r19`（ARM64 平台使用 1.0-r19-arm），你也可以参照 [编译与打包](#编译与打包) 部分的说明自行编译打包镜像。
+你可以直接下载使用我编译好的镜像 `docker pull hazx/hmengine-db:1.1-r1`（ARM64 平台使用 1.1-r1-arm），你也可以参照 [编译与打包](#编译与打包) 部分的说明自行编译打包镜像。
 
 ## 内部路径映射参考
 
 - 数据目录：`/db_server/data`
-- 自定义配置文件：`/db_server/etc/my.cnf`
+- 自定义配置文件：`/db_server/etc/custom.cnf`
 - 运行日志：`/db_server/db.log`
 - Socket: `/db_server/socket/mysql.sock`
 
@@ -34,8 +34,9 @@ HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库�
 docker run -d --cap-add SYS_NICE \
     --name db \
     -p 6000:6000 \
+    -v /home/db_data:/db_server/data \
     -e DB_PASSWORD=PaSsWoRd1234 \
-    hazx/hmengine-db:1.0-r19
+    hazx/hmengine-db:1.1-r1
 ```
 
 ## 环境变量
@@ -44,17 +45,18 @@ docker run -d --cap-add SYS_NICE \
 ---|---|---|---|---
 DB_PASSWORD | 数据库root账户密码 (必填) | 字符串 | | √
 DB_PORT | 数据库监听端口 | 数字 | 6000 | √
-DB_LCTN | 表名大小写不敏感 | false/true | false | 
-DB_MEM | 工作内存 | 容量 | 主机可用内存 | √
+DB_AUTHPLUG | 认证插件 | caching_sha2_password/<br />mysql_native_password/<br />sha256_password | caching_sha2_password | 
 DB_IIC | 存储IOPS | 数字 (小于40000) | 1000 | 
 DB_IRLC | 重做日志大小 | 容量 | 256M | 
+DB_LCTN | 表名大小写不敏感 | false/true | false | 
+DB_MEM | 工作内存 | 容量 | 主机可用内存 | √
 
 **Tips:**
 
 - `DB_PASSWORD` : 仅在首次初始化时生效。
-- `DB_MEM` : 用于自动调优参考的内存容量，非实际使用或限制的容量。不可大于主机内存。参考写法：1024M、8G。
 - `DB_IIC` : 调优建议：机械硬盘100\~200，SATA固态2000\~8000，PCIE固态10000\~20000，带缓存的固态集群可更高。可参考实际存储测试的IOPS结果。（对应参数：innodb_io_capacity）
 - `DB_IRLC` : 调优建议：存储快、CPU强则可开到1G、2G甚至更高。调大可提高读写性能，但会增加数据库意外关闭后的启动(恢复)时间。（对应参数：innodb_redo_log_capacity）
+- `DB_MEM` : 用于自动调优参考的内存容量，非实际使用或限制的容量。不可大于主机内存。参考写法：1024M、8G。
 
 # 编译与打包
 

@@ -51,7 +51,7 @@ mkdir -p /db_server/socket
 mkdir -p /db_server/tmp
 mv /root/default.cnf /db_server/etc/
 mv /root/init.cnf /db_server/etc/
-echo "" > /db_server/etc/my.cnf
+echo "" > /db_server/etc/custom.cnf
 
 ## 配置权限
 groupadd -g 666 mysql

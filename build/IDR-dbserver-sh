@@ -11,7 +11,7 @@ db_start_bg(){
     echo "" > /db_server/db.log
     chown mysql:mysql /db_server/db.log
     /db_server/bin/mysqld \
-        --defaults-file=/db_server/etc/main.cnf \
+        --defaults-file=/db_server/etc/my.cnf \
         --basedir=/db_server \
         --user=mysql \
         --mysqlx=OFF \
@@ -56,7 +56,7 @@ db_wait_ready(){
     done
     if [ $ATTEMPT -ne 200 ];then
         echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] Waitting Database ready but timeout..."
-        sleep 10
+        sleep 60
         exit 1
     fi
 }
@@ -90,33 +90,45 @@ least(){
 
 
 ## 处理配置文件
-cat /db_server/etc/default.cnf > /db_server/etc/main.cnf
-cat /db_server/etc/my.cnf >> /db_server/etc/main.cnf
-chown mysql:mysql /db_server/etc/main.cnf
+cat /db_server/etc/default.cnf > /db_server/etc/my.cnf
+cat /db_server/etc/custom.cnf >> /db_server/etc/my.cnf
+chown mysql:mysql /db_server/etc/my.cnf
 
-## 变量：DB_LCTN -> lower_case_table_names
-if [ ! -n "${DB_LCTN}" ];then
-    sed -i "s/##DB_LCTN##/0/" /db_server/etc/main.cnf
+## 变量：DB_AUTHPLUG -> default_authentication_plugin
+if [ ! -n "${DB_AUTHPLUG}" ];then
+    sed -i "s/##DB_AUTHPLUG##/caching_sha2_password/" /db_server/etc/my.cnf
+    sed -i "s/##DB_AUTHPLUG##/caching_sha2_password/" /db_server/etc/init.cnf
 else
-    if [[ "${DB_LCTN}" = "true" ]] || [[ "${DB_LCTN}" = "TRUE" ]] || [[ "${DB_LCTN}" = "1" ]]; then
-        sed -i "s/##DB_LCTN##/1/" /db_server/etc/main.cnf
-    else
-        sed -i "s/##DB_LCTN##/0/" /db_server/etc/main.cnf
-    fi
+    sed -i "s/##DB_AUTHPLUG##/${DB_AUTHPLUG}/" /db_server/etc/my.cnf
+    sed -i "s/##DB_AUTHPLUG##/${DB_AUTHPLUG}/" /db_server/etc/init.cnf
 fi
 
 ## 变量：DB_IIC -> innodb_io_capacity
 if [ ! -n "${DB_IIC}" ];then
-    sed -i "s/##DB_IIC##/1000/" /db_server/etc/main.cnf
+    sed -i "s/##DB_IIC##/1000/" /db_server/etc/my.cnf
 else
-    sed -i "s/##DB_IIC##/${DB_IIC}/" /db_server/etc/main.cnf
+    sed -i "s/##DB_IIC##/${DB_IIC}/" /db_server/etc/my.cnf
 fi
 
 ## 变量：DB_IRLC -> innodb_redo_log_capacity
 if [ ! -n "${DB_IRLC}" ];then
-    sed -i "s/##DB_IRLC##/256M/" /db_server/etc/main.cnf
+    sed -i "s/##DB_IRLC##/256M/" /db_server/etc/my.cnf
 else
-    sed -i "s/##DB_IRLC##/${DB_IRLC}/" /db_server/etc/main.cnf
+    sed -i "s/##DB_IRLC##/${DB_IRLC}/" /db_server/etc/my.cnf
+fi
+
+## 变量：DB_LCTN -> lower_case_table_names
+if [ ! -n "${DB_LCTN}" ];then
+    sed -i "s/##DB_LCTN##/0/" /db_server/etc/my.cnf
+    sed -i "s/##DB_LCTN##/0/" /db_server/etc/init.cnf
+else
+    if [[ "${DB_LCTN}" = "true" ]] || [[ "${DB_LCTN}" = "TRUE" ]] || [[ "${DB_LCTN}" = "1" ]]; then
+        sed -i "s/##DB_LCTN##/1/" /db_server/etc/my.cnf
+        sed -i "s/##DB_LCTN##/1/" /db_server/etc/init.cnf
+    else
+        sed -i "s/##DB_LCTN##/0/" /db_server/etc/my.cnf
+        sed -i "s/##DB_LCTN##/0/" /db_server/etc/init.cnf
+    fi
 fi
 
 
@@ -158,46 +170,46 @@ fi
 ## 参数调优：innodb_buffer_pool_instances
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 8) 
-sed -i "s/##DB_IBPI##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_IBPI##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：innodb_buffer_pool_size
 tmp_cnf_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} * 3 / 4 + 0.5}")
-sed -i "s/##DB_IBPS##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_IBPS##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：innodb_lru_scan_depth
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1048576 / 8 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 8192) 
-sed -i "s/##DB_ILSD##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_ILSD##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：innodb_page_cleaners
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 8) 
-sed -i "s/##DB_IPC##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_IPC##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：innodb_purge_threads
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 8) 
-sed -i "s/##DB_IPT##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_IPT##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：join_buffer_size
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1048576 * 128 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 262144) 
-sed -i "s/##DB_JBS##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_JBS##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：read_buffer_size
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1048576 * 128 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 262144) 
-sed -i "s/##DB_RBS##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_RBS##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：table_definition_cache
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 * 512 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 8192) 
-sed -i "s/##DB_TDC##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_TDC##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 ## 参数调优：table_open_cache
 tmp_calc_value=$(awk "BEGIN {printf \"%d\", ${db_node_mem} / 1073741824 * 1024 + 0.5}")
 tmp_cnf_value=$(least $tmp_calc_value 16384) 
-sed -i "s/##DB_TOC##/${tmp_cnf_value}/" /db_server/etc/main.cnf
+sed -i "s/##DB_TOC##/${tmp_cnf_value}/" /db_server/etc/my.cnf
 
 
 ## 初始化数据库
@@ -210,7 +222,7 @@ if [ ! -e /db_server/data/mysql ];then
         sleep 10
         exit 1
     fi
-    rm -fr /db_server/data/*
+    # rm -fr /db_server/data/*
     rm -f /db_server/db-init.log
     mkdir -p /db_server/data/
     chown -R mysql:mysql /db_server/data

@@ -1,10 +1,17 @@
-##hmengine_df_config##
+[client]
+socket=/db_server/socket/mysql.sock
+default-character-set=utf8mb4
+plugin_dir=/db_server/lib/plugin
+
+[manager]
+socket=/db_server/socket/mysql.sock
+pid-file=/db_server/mysqld.pid
 
 [mysqld]
 datadir=/db_server/data
 log_bin=/db_server/data/mysql-bin
 pid_file=/db_server/mysqld.pid
-plugin_dir=/db_server/lib/plugin/
+plugin_dir=/db_server/lib/plugin
 secure_file_priv=/db_server/mysql-files
 socket=/db_server/socket/mysql.sock
 slow_query_log_file=/db_server/data/db-slow.log
@@ -13,7 +20,7 @@ tmpdir=/db_server/tmp
 bind_address=0.0.0.0
 character_set_server=utf8mb4
 collation_server=utf8mb4_general_ci
-default_authentication_plugin=caching_sha2_password
+default_authentication_plugin=##DB_AUTHPLUG##
 default_storage_engine=innodb
 lower_case_table_names=##DB_LCTN##
 slow_query_log=0

@@ -7,7 +7,7 @@ db_start_bg(){
     fi
     chown -R mysql:mysql /db_server/data
     chmod -R 755 /db_server/data
-    echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Service Starting in background..."
+    echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB service starting in background..."
     echo "" > /db_server/db.log
     chown mysql:mysql /db_server/db.log
     /db_server/bin/mysqld \
@@ -31,11 +31,11 @@ db_start_bg(){
     done
     if [ ! -e "/db_server/mysqld.pid" ] ; then
         cat /db_server/db.log
-        echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Service Start Failed."
+        echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB service start failed."
         sleep 10
         exit 1
     else
-        echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Service Started."
+        echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB service started."
     fi
 }
 
@@ -53,9 +53,12 @@ db_wait_ready(){
         else
             ATTEMPT=200
         fi
+        if [ "$var" -gt 6 ] && [ "$var" -lt 100 ]; then
+            echo "[$(date +%Y%m%d-%H%M%S)] Watting database ready... (${ATTEMPT}s)"
+        fi
     done
     if [ $ATTEMPT -ne 200 ];then
-        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] Waitting Database ready but timeout..."
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] Waitting database ready timeout."
         sleep 60
         exit 1
     fi
@@ -131,6 +134,13 @@ else
     fi
 fi
 
+## 变量：DB_MAXPKT -> max_allowed_packet
+if [ ! -n "${DB_MAXPKT}" ];then
+    sed -i "s/##DB_MAXPKT##/32M/" /db_server/etc/my.cnf
+else
+    sed -i "s/##DB_MAXPKT##/${DB_MAXPKT}/" /db_server/etc/my.cnf
+fi
+
 
 
 ## 参数调优：计算工作内存
@@ -138,7 +148,7 @@ db_node_mem=1073741824
 if [ ! -n "${DB_MEM}" ];then
     db_node_mem_m=$(free -m | grep Mem | awk '{print $7}')
     if ! [[ $db_node_mem_m =~ ^[0-9]+$ ]]; then
-        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] cannot read system memory size, please set ENV DB_MEM."
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] cannot read system memory size, please set ENV: DB_MEM."
         sleep 10
         exit 1
     fi
@@ -147,7 +157,7 @@ else
     tmp_mem_num=$(echo "${DB_MEM}" | grep -oE '[0-9]+' | head -n 1)
     tmp_mem_unit=$(echo "${DB_MEM}" | grep -oE '[a-zA-Z]$' | head -n 1)
     if ! [[ $tmp_mem_num =~ ^[0-9]+$ ]]; then
-        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV DB_MEM unrecognizable."
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV: DB_MEM unrecognizable."
         sleep 10
         exit 1
     fi
@@ -161,7 +171,7 @@ else
         db_node_mem=${tmp_mem_num}
     fi
     if ! [[ $db_node_mem =~ ^[0-9]+$ ]]; then
-        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV DB_MEM unrecognizable."
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV: DB_MEM unrecognizable."
         sleep 10
         exit 1
     fi
@@ -218,7 +228,7 @@ if [ ! -e /db_server/data/mysql ];then
     ## 初始化数据库底层信息
     echo "[$(date +%Y%m%d-%H%M%S)] HMengine-DB Initializing..."
     if [ -z "${DB_PASSWORD}" ]; then
-        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV DB_PASSWORD must be set."
+        echo "[$(date +%Y%m%d-%H%M%S)] [ERROR] ENV: DB_PASSWORD must be set."
         sleep 10
         exit 1
     fi
@@ -242,7 +252,7 @@ if [ ! -e /db_server/data/mysql ];then
     db_wait_ready
     cat /db_server/db.log
     echo "" > /db_server/db.log
-    echo "[$(date +%Y%m%d-%H%M%S)] Root User Initializing..."
+    echo "[$(date +%Y%m%d-%H%M%S)] Root user initializing..."
     /db_server/bin/mysql -N -u root \
         --socket=/db_server/socket/mysql.sock \
         -e "DELETE FROM mysql.user WHERE user not in ('mysql.sys','mysql.infoschema','mysql.session');"
@@ -259,6 +269,7 @@ if [ ! -e /db_server/data/mysql ];then
         --socket=/db_server/socket/mysql.sock \
         -e "flush privileges;"
     sleep 3
+    echo "[$(date +%Y%m%d-%H%M%S)] Root user initialized."
     cat /db_server/db.log
 
     db_stop    

@@ -1,0 +1,21 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: hmengine-db-config
+  namespace: default
+  labels:
+    app: hmengine-db
+    release: hmengine-db
+data:
+  custom.cnf: |-
+    ## 在这里写自定义配置
+    #[mysqld]
+    #character_set_server=utf8
+    #collation_server=utf8_general_ci
+    #binlog_transaction_dependency_tracking=COMMIT_ORDER
+    #max_allowed_packet=64M
+    #max_connections=5000
+    #max_user_connections=2000
+    #transaction_isolation=REPEATABLE-READ
+
+

@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hmengine-db
+  namespace: default
+  labels:
+    app: hmengine-db
+    release: hmengine-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hmengine-db
+      release: hmengine-db
+  template:
+    metadata:
+      name: hmengine-db
+      labels:
+        app: hmengine-db
+        release: hmengine-db
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: hmengine-db-config
+            defaultMode: 420
+      containers:
+        - name: hmengine-db
+          image: hazx/hmengine-db:1.2-r0
+          ports:
+            - name: db
+              containerPort: 6000
+              protocol: TCP
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hmengine-db-secret
+                  key: root-password
+            - name: DB_MEM
+              value: '8G'
+          resources:
+            requests:
+              cpu: 500m
+              memory: 4Gi
+            limits:
+              cpu: 8
+              memory: 8Gi
+          volumeMounts:
+            - name: data
+              mountPath: /db_server/data
+            - name: config
+              mountPath: /db_server/etc/custom.cnf
+              subPath: custom.cnf
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - "/db_server/bin/mysql -N -uroot -p${DB_PASSWORD} --socket=/db_server/socket/mysql.sock -e 'SELECT VERSION();'"
+            initialDelaySeconds: 60
+            periodSeconds: 5
+            timeoutSeconds: 6
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - "/db_server/bin/mysql -N -uroot -p${DB_PASSWORD} --socket=/db_server/socket/mysql.sock -e 'SELECT VERSION();'"
+            initialDelaySeconds: 60
+            periodSeconds: 5
+            timeoutSeconds: 6
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+  volumeClaimTemplates:
+    - kind: PersistentVolumeClaim
+      apiVersion: v1
+      metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+        storageClassName: nfs
+        volumeMode: Filesystem
+  serviceName: hmengine-db-svc
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  revisionHistoryLimit: 10

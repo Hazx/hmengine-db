@@ -6,7 +6,7 @@
 
 docker_path=hazx
 docker_img=hmengine-db
-docker_tag=1.1-r1
+docker_tag=1.2-r0
 docker_base=ubuntu:jammy-20240911.1
 ## 编译线程数
 make_threads=${1:-2}

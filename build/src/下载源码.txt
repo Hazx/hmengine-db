@@ -1,2 +1,2 @@
-https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.41.tar.gz
+https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.42.tar.gz
 下载源码包并放置于此目录中

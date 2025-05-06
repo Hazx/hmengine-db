@@ -44,6 +44,7 @@ innodb_open_files=20000
 innodb_page_cleaners=##DB_IPC##
 innodb_purge_threads=##DB_IPT##
 innodb_redo_log_capacity=##DB_IRLC##
+innodb_sort_buffer_size = 4M
 innodb_sync_array_size=128
 interactive_timeout=7200
 join_buffer_size=##DB_JBS##
@@ -61,6 +62,7 @@ read_buffer_size=##DB_RBS##
 server_id=1
 skip_binlog_order_commits
 skip_name_resolve
+sort_buffer_size = 4M
 sql_mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
 table_definition_cache=##DB_TDC##
 table_open_cache=##DB_TOC##
@@ -68,4 +70,3 @@ thread_cache_size=100
 tmp_table_size=2M
 transaction_isolation=READ-COMMITTED
 wait_timeout=86400
-

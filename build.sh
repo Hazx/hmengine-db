@@ -1,12 +1,12 @@
 #!/bin/bash
 
 ## 源码编译-源码来源
-## https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.41.tar.gz
+## https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.42.tar.gz
 
 
 docker_path=hazx
 docker_img=hmengine-db
-docker_tag=1.2-r0
+docker_tag=1.3-r0
 docker_base=ubuntu:jammy-20240911.1
 ## 编译线程数
 make_threads=${1:-2}

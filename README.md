@@ -1,19 +1,19 @@
 # HMengine-DB
 
-HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库引擎，数据库读写性能相较传统 MySQL （默认参数）有着翻倍提升。~~如需高可用集群化部署可以使用 [HMengine-DBC](https://github.com/Hazx/hmengine-dbc)。~~
+HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库引擎，数据库读写性能相较默认参数的 MySQL 有着翻倍提升。
 
 对应镜像及版本：
 
-- `hazx/hmengine-db:1.2-r0`
-- `hazx/hmengine-db:1.2-r0-arm`
+- `hazx/hmengine-db:1.3-r0`
+- `hazx/hmengine-db:1.3-r0-arm`
 
 # 组件版本
 
-- MySQL：8.0.41
+- MySQL：8.0.42
 
 # 使用镜像
 
-你可以直接下载使用我编译好的镜像 `docker pull hazx/hmengine-db:1.2-r0`（ARM64 平台使用 1.2-r0-arm），你也可以参照 [编译与打包](#编译与打包) 部分的说明自行编译打包镜像。
+你可以直接下载使用我编译好的镜像 `docker pull hazx/hmengine-db:1.3-r0`（ARM64 平台使用 1.3-r0-arm），你也可以参照 [编译与打包](#编译与打包) 部分的说明自行编译打包镜像。
 
 ## 内部路径映射参考
 
@@ -36,7 +36,7 @@ docker run -d --cap-add SYS_NICE \
     -p 6000:6000 \
     -v /home/db_data:/db_server/data \
     -e DB_PASSWORD=PaSsWoRd1234 \
-    hazx/hmengine-db:1.2-r0
+    hazx/hmengine-db:1.3-r0
 ```
 
 ## 环境变量
@@ -55,8 +55,8 @@ DB_MEM | 工作内存 | 容量 | 主机可用内存 | √
 **Tips:**
 
 - `DB_PASSWORD` : 仅在首次初始化时生效。
-- `DB_IIC` : 调优建议：机械硬盘100\~200，SATA固态2000\~8000，PCIE固态10000\~20000，带缓存的固态集群可更高。可参考实际存储测试的IOPS结果。（对应参数：innodb_io_capacity）
-- `DB_IRLC` : 调优建议：存储快、CPU强则可开到1G、2G甚至更高。调大可提高读写性能，但会增加数据库意外关闭后的启动(恢复)时间。（对应参数：innodb_redo_log_capacity）
+- `DB_IIC` 调优建议: 机械硬盘100\~200，SATA固态2000\~8000，PCIE固态10000\~20000，带缓存的固态集群可更高。可参考实际存储测试的IOPS结果。（对应参数：innodb_io_capacity）
+- `DB_IRLC` 调优建议: 存储快、CPU强则可开到1G、2G甚至更高。调大可提高读写性能，但会增加数据库意外关闭后的启动(恢复)时间。（对应参数：innodb_redo_log_capacity）
 - `DB_MEM` : 用于自动调优参考的内存容量，非实际使用或限制的容量。不可大于主机内存。参考写法：1024M、8G。
 
 ## 数据库默认参数
@@ -97,6 +97,7 @@ innodb_open_files | 20000
 innodb_page_cleaners | (动态调优)
 innodb_purge_threads | (动态调优)
 innodb_redo_log_capacity | 256M
+innodb_sort_buffer_size = 4M
 innodb_sync_array_size | 128
 interactive_timeout | 7200
 join_buffer_size | (动态调优)
@@ -114,6 +115,7 @@ read_buffer_size | (动态调优)
 server_id | 1
 skip_binlog_order_commits
 skip_name_resolve
+sort_buffer_size = 4M
 sql_mode | ONLY_FULL_GROUP_BY,<br />STRICT_TRANS_TABLES,<br />NO_ZERO_IN_DATE,<br />NO_ZERO_DATE,<br />ERROR_FOR_DIVISION_BY_ZERO,<br />NO_ENGINE_SUBSTITUTION
 table_definition_cache | (动态调优)
 table_open_cache | (动态调优)

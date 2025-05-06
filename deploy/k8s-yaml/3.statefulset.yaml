@@ -47,8 +47,9 @@ spec:
               cpu: 8
               memory: 8Gi
           volumeMounts:
-            - name: data
+            - name: datastore
               mountPath: /db_server/data
+              subPath: data
             - name: config
               mountPath: /db_server/etc/custom.cnf
               subPath: custom.cnf
@@ -85,7 +86,7 @@ spec:
     - kind: PersistentVolumeClaim
       apiVersion: v1
       metadata:
-        name: data
+        name: datastore
       spec:
         accessModes:
           - ReadWriteOnce

@@ -97,7 +97,7 @@ innodb_open_files | 20000
 innodb_page_cleaners | (动态调优)
 innodb_purge_threads | (动态调优)
 innodb_redo_log_capacity | 256M
-innodb_sort_buffer_size = 4M
+innodb_sort_buffer_size | 4M
 innodb_sync_array_size | 128
 interactive_timeout | 7200
 join_buffer_size | (动态调优)
@@ -115,7 +115,7 @@ read_buffer_size | (动态调优)
 server_id | 1
 skip_binlog_order_commits
 skip_name_resolve
-sort_buffer_size = 4M
+sort_buffer_size | 4M
 sql_mode | ONLY_FULL_GROUP_BY,<br />STRICT_TRANS_TABLES,<br />NO_ZERO_IN_DATE,<br />NO_ZERO_DATE,<br />ERROR_FOR_DIVISION_BY_ZERO,<br />NO_ENGINE_SUBSTITUTION
 table_definition_cache | (动态调优)
 table_open_cache | (动态调优)

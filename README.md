@@ -1,19 +1,18 @@
 # HMengine-DB
 
-HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库引擎，数据库读写性能相较默认参数的 MySQL 有着翻倍提升。
+HMengine-DB 是一个基于 MySQL 8 构建并进行了性能调优的数据库引擎，数据库读写性能相较默认参数的 MySQL 有着翻倍提升。支持 X86_64 及 ARM64 平台。
 
 对应镜像及版本：
 
-- `hazx/hmengine-db:1.3-r0`
-- `hazx/hmengine-db:1.3-r0-arm`
+- `hazx/hmengine-db:1.4-r0`
 
 # 组件版本
 
-- MySQL：8.0.42
+- MySQL：8.0.43
 
 # 使用镜像
 
-你可以直接下载使用我编译好的镜像 `docker pull hazx/hmengine-db:1.3-r0`（ARM64 平台使用 1.3-r0-arm），你也可以参照 [编译与打包](#编译与打包) 部分的说明自行编译打包镜像。
+你可以直接下载使用我编译好的镜像 `docker pull hazx/hmengine-db:1.4-r0`，你也可以参照 [编译与打包](#编译与打包) 部分的说明自行编译打包镜像。
 
 ## 内部路径映射参考
 
@@ -36,7 +35,7 @@ docker run -d --cap-add SYS_NICE \
     -p 6000:6000 \
     -v /home/db_data:/db_server/data \
     -e DB_PASSWORD=PaSsWoRd1234 \
-    hazx/hmengine-db:1.3-r0
+    hazx/hmengine-db:1.4-r0
 ```
 
 ## 环境变量
@@ -44,19 +43,23 @@ docker run -d --cap-add SYS_NICE \
 环境变量 | 功能说明 | 参数值 | 默认值 | 仅可通过环境变量配置
 ---|---|---|---|---
 DB_PASSWORD | 数据库root账户密码 (必填) | 字符串 | | √
-DB_PORT | 数据库监听端口 | 数字 | 6000 | √
-DB_AUTHPLUG | 认证插件 | caching_sha2_password/<br />mysql_native_password/<br />sha256_password | caching_sha2_password | 
-DB_IIC | 存储IOPS | 数字 (小于40000) | 1000 | 
-DB_IRLC | 重做日志大小 | 容量 | 256M | 
-DB_LCTN | 表名大小写不敏感 | false/true | false | 
-DB_MAXPKT | 数据包限制大小 | 容量 | 32M | 
+DB_PORT | 数据库监听端口 | 数字 | `6000` | √
+DB_AUTHPLUG | 认证插件 | `caching_sha2_password`/<br />`mysql_native_password`/<br />`sha256_password` | `caching_sha2_password` | 
+DB_EXARGS | 自定义额外 MySQL 启动参数 | 类似 `--xxx=666` 形式
+DB_IIC | 存储IOPS | 数字 (小于40000) | `1000` | 
+DB_IRLC | 重做日志大小 | 容量 | `256M` | 
+DB_LCTN | 表名大小写不敏感 | `false`/`true` | `false` | 
+DB_MAXPKT | 数据包限制大小 | 容量 | `32M` | 
 DB_MEM | 工作内存 | 容量 | 主机可用内存 | √
+DB_UPGRADE | 数据升级 | `AUTO`/`NONE`/`MINIMAL`/`FORCE` | `AUTO`
+
 
 **Tips:**
 
 - `DB_PASSWORD` : 仅在首次初始化时生效。
 - `DB_IIC` 调优建议: 机械硬盘100\~200，SATA固态2000\~8000，PCIE固态10000\~20000，带缓存的固态集群可更高。可参考实际存储测试的IOPS结果。（对应参数：innodb_io_capacity）
 - `DB_IRLC` 调优建议: 存储快、CPU强则可开到1G、2G甚至更高。调大可提高读写性能，但会增加数据库意外关闭后的启动(恢复)时间。（对应参数：innodb_redo_log_capacity）
+- `DB_LCTN` : 仅在首次初始化时生效，且一旦完成初始化后不可修改。
 - `DB_MEM` : 用于自动调优参考的内存容量，非实际使用或限制的容量。不可大于主机内存。参考写法：1024M、8G。
 
 ## 数据库默认参数
@@ -80,6 +83,9 @@ lower_case_table_names | 0
 slow_query_log | 0
 back_log | 3000
 binlog_cache_size | 2097152
+binlog_expire_logs_seconds | 86400
+binlog_format | ROW
+binlog_row_image | minimal
 binlog_transaction_dependency_history_size | 500000
 binlog_transaction_dependency_tracking | WRITESET
 default_time_zone | +08:00
@@ -103,6 +109,7 @@ interactive_timeout | 7200
 join_buffer_size | (动态调优)
 long_query_time | 10
 max_allowed_packet | 32M
+max_binlog_cache_size | 32M
 max_connections | 2000
 max_error_count | 64
 max_heap_table_size | 67108864

@@ -1,20 +1,25 @@
 #!/bin/bash
 
 ## 源码编译-源码来源
-## https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.42.tar.gz
+## https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.43.tar.gz
 
 
 docker_path=hazx
 docker_img=hmengine-db
-docker_tag=1.3-r0
+docker_tag=1.4-r0
 docker_base=ubuntu:jammy-20240911.1
 ## 编译线程数
 make_threads=${1:-2}
 
 arch=$(uname -p)
-if [[ $arch == "aarch64" ]] || [[ $arch == "arm64" ]];then
-    docker_tag=${docker_tag}-arm
-fi
+# if [[ $arch == "aarch64" ]] || [[ $arch == "arm64" ]];then
+#     docker_tag=${docker_tag}-arm
+# elif [[ $arch == "x86_64" ]];then
+#     docker_tag=${docker_tag}-x86
+# else
+#     echo "不支持当前CPU架构"
+#     exit
+# fi
 
 ## 清理工作目录
 rm -fr build_${docker_img}
@@ -105,6 +110,6 @@ rm -fr build_${docker_img}
 echo ""
 echo "Docker镜像制作完成"
 echo "镜像地址: ${docker_path}/${docker_img}:${docker_tag}"
-echo "镜像文件: output/${docker_img}-${docker_tag}.tar.gz"
+echo "镜像文件: output/${docker_img}-${docker_tag}-${arch}.tar.gz"
 echo "Tips: 一些设备（例如绿联NAS）不支持.tar.gz扩展名，你需要在上传前重命名为.tar"
 echo ""

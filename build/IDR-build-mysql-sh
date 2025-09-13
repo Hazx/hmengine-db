@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## 组件版本
-export set_ver_mysql=8.0.42
+export set_ver_mysql=8.0.43
 
 ## 安装MySQL依赖组件
 echo "安装MySQL依赖组件..."

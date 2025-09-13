@@ -70,7 +70,7 @@ datadir | /db_server/data
 log_bin | /db_server/data/mysql-bin
 pid_file | /db_server/mysqld.pid
 plugin_dir | /db_server/lib/plugin
-secure_file_priv | /db_server/mysql-files
+secure_file_priv | NULL
 socket | /db_server/socket/mysql.sock
 slow_query_log_file | /db_server/data/db-slow.log
 tmpdir | /db_server/tmp

@@ -51,7 +51,7 @@ DB_IRLC | 重做日志大小 | 容量 | `256M` |
 DB_LCTN | 表名大小写不敏感 | `false`/`true` | `false` | 
 DB_MAXPKT | 数据包限制大小 | 容量 | `32M` | 
 DB_MEM | 工作内存 | 容量 | 主机可用内存 | √
-DB_UPGRADE | 数据升级 | `AUTO`/`NONE`/`MINIMAL`/`FORCE` | `AUTO`
+DB_UPGRADE | 数据升级 | `AUTO`/`NONE`/`MINIMAL`/`FORCE` | `AUTO` | √
 
 
 **Tips:**
